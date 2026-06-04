@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-//Shell loop 
+//Shell loop
 //Input parsing
 //Command execution
 //Handle built-in command exp. cd, pwd, echo, env, setenv, unsetevn, which, exit
@@ -12,15 +14,19 @@
 void shell_loop(char** env) {
     char* input = NULL;
     size_t input_size = 0;
-    
+
     char** args;
     while (1) {
         printf("[minh_shell]> ");
-        if (getline(&input, &input_size, stdin) == -1) 
+        if (getline(&input, &input_size, stdin) == -1) {
+            perror("readline");
             break;
+        }
 
-        printf("Input: %s", input);
+        input[strcspn(input, "\n")] = 0;
+        printf("Input: %s\n", input);
     }
+    free(input);
 }
 
 
