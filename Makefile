@@ -7,6 +7,8 @@ BUILD_DIR := build
 
 SRCS := \
 	src/main.c \
+	src/arena.c \
+	src/shell_state.c \
 	src/shell_loop.c \
 	src/input_parser.c \
 	src/execute.c \
