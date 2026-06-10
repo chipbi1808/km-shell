@@ -6,28 +6,38 @@
 #define TOKEN_BUFSIZE 64
 #define TOKEN_DELIM " \t\r\n\a"
 
-char* read_line(void)
+char* read_line(mem_arena* arena, FILE* input)
 {
     char* line = NULL;
     size_t buf_size = 0;
-    if (getline(&line, &buf_size, stdin) == -1) {
-        if (feof(stdin)) {
-            exit(EXIT_SUCCESS);
+    char* out;
+
+    if (getline(&line, &buf_size, input) == -1) {
+        free(line);
+        if (feof(input)) {
+            return NULL;
         }
         else {
             perror("shell: getline\n");
             exit(EXIT_FAILURE);
         }
     }
-    return line;
+
+    out = arena_strdup(arena, line);
+    free(line);
+    if (!out) {
+        fprintf(stderr, "shell: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return out;
 }
 
-char** split_line(char* line)
+char** split_line(mem_arena* arena, char* line)
 {
     int buf_size = TOKEN_BUFSIZE;
     int position = 0;
-    char** tokens = malloc(buf_size * sizeof(char*));
-    char** tokens_backup;
+    char** tokens = PUSH_ARRAY(arena, char*, buf_size);
     char* token;
 
     if (!tokens) {
@@ -41,14 +51,15 @@ char** split_line(char* line)
         position++;
 
         if (position >= buf_size) {
+            char** new_tokens;
             buf_size += TOKEN_BUFSIZE;
-            tokens_backup = tokens;
-            tokens = realloc(tokens, buf_size * sizeof(char*));
-            if (!tokens) {
-                free(tokens_backup);
+            new_tokens = PUSH_ARRAY(arena, char*, buf_size);
+            if (!new_tokens) {
                 fprintf(stderr, "shell: allocation error\n");
                 exit(EXIT_FAILURE);
             }
+            memcpy(new_tokens, tokens, (u64)position * sizeof(char*));
+            tokens = new_tokens;
         }
 
         token = strtok(NULL, TOKEN_DELIM);

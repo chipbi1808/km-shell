@@ -4,20 +4,56 @@
 #include "execute.h"
 #include "input_parser.h"
 
-void shell_loop(void)
+static int shell_execute_line(shell_state* state, FILE* input)
 {
     char* line;
     char** args;
-    int status;
-    do {
+
+    arena_clear(state->scratch);
+
+    line = read_line(state->scratch, input);
+    if (!line) {
+        return 0;
+    }
+
+    args = split_line(state->scratch, line);
+    shell_execute(state, args);
+    shell_refresh_processes(state);
+    return 1;
+}
+
+void shell_loop(void)
+{
+    shell_state state = {0};
+
+    if (!shell_state_init(&state)) {
+        fprintf(stderr, "shell: failed to initialize shell state\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (!state.should_exit) {
         printf("> ");
         fflush(stdout);
-        line = read_line();
-        args = split_line(line);
-        status = shell_execute(args);
 
-        free(line);
-        free(args);
+        if (!shell_execute_line(&state, stdin)) {
+            break;
+        }
+    }
 
-    } while (status);
+    shell_state_destroy(&state);
+}
+
+int shell_run_file(shell_state* state, const char* path)
+{
+    FILE* file = fopen(path, "r");
+    if (!file) {
+        perror("shell");
+        return 1;
+    }
+
+    while (!state->should_exit && shell_execute_line(state, file)) {
+    }
+
+    fclose(file);
+    return !state->should_exit;
 }

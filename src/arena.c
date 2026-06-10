@@ -22,13 +22,16 @@ mem_arena* arena_create(u64 reserve_size, u64 commit_size) {
     mem_arena* arena = (mem_arena*)plat_mem_reserve(reserve_size);
     if (!arena) return NULL;
 
-    if (!plat_mem_commit(arena, commit_size)) return NULL;
+    if (!plat_mem_commit(arena, commit_size)) {
+        plat_mem_release(arena, reserve_size);
+        return NULL;
+    }
 
     arena->reserve_size = reserve_size;
     arena->commit_size = commit_size;
     arena->pos = ARENA_BASE_POS;
     arena->commit_pos = commit_size;
-    
+
     return arena;
 }
 
@@ -57,6 +60,14 @@ void* arena_push(mem_arena* arena, u64 size, b32 non_zero) {
     u8* out = (u8*)arena + pos_aligned;
     if (!non_zero) memset(out, 0, size);
 
+    return out;
+}
+
+char* arena_strdup(mem_arena* arena, const char* str) {
+    u64 len = (u64)strlen(str) + 1;
+    char* out = (char*)arena_push(arena, len, true);
+    if (!out) return NULL;
+    memcpy(out, str, len);
     return out;
 }
 
@@ -103,7 +114,6 @@ b32 plat_mem_release(void* ptr, u64 size) {
 }
 
 #elif defined(__linux__)
-#define _DEFAULT_SOURCE
 #include <unistd.h>
 #include <sys/mman.h>
 
